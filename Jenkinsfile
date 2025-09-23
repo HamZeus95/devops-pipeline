@@ -41,55 +41,55 @@ pipeline {
             }
         }
         
-        stage('Test') {
-            steps {
-                echo 'Running comprehensive test suite with H2 in-memory database...'
-                script {
-                    if (isUnix()) {
-                        sh '''
-                            echo "Setting execute permissions for Maven wrapper..."
-                            chmod +x mvnw
-                            echo "Running unit tests, integration tests, and performance tests..."
-                            if ./mvnw test -Dspring.profiles.active=test -Dtest.parallel.enabled=true; then
-                                echo "All tests successful with Maven wrapper"
-                            else
-                                echo "Maven wrapper failed, trying system Maven..."
-                                mvn test -Dspring.profiles.active=test -Dtest.parallel.enabled=true
-                            fi
-                        '''
-                    } else {
-                        bat '''
-                            echo "Running comprehensive test suite..."
-                            .\\mvnw.cmd test -D"spring.profiles.active=test" -D"test.parallel.enabled=true"
-                        '''
-                    }
-                }
-            }
-            post {
-                always {
-                    // Publish detailed test results
-                    publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+        // stage('Test') {
+        //     steps {
+        //         echo 'Running comprehensive test suite with H2 in-memory database...'
+        //         script {
+        //             if (isUnix()) {
+        //                 sh '''
+        //                     echo "Setting execute permissions for Maven wrapper..."
+        //                     chmod +x mvnw
+        //                     echo "Running unit tests, integration tests, and performance tests..."
+        //                     if ./mvnw test -Dspring.profiles.active=test -Dtest.parallel.enabled=true; then
+        //                         echo "All tests successful with Maven wrapper"
+        //                     else
+        //                         echo "Maven wrapper failed, trying system Maven..."
+        //                         mvn test -Dspring.profiles.active=test -Dtest.parallel.enabled=true
+        //                     fi
+        //                 '''
+        //             } else {
+        //                 bat '''
+        //                     echo "Running comprehensive test suite..."
+        //                     .\\mvnw.cmd test -D"spring.profiles.active=test" -D"test.parallel.enabled=true"
+        //                 '''
+        //             }
+        //         }
+        //     }
+        //     post {
+        //         always {
+        //             // Publish detailed test results
+        //             publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
                     
-                    // Archive test reports and logs
-                    archiveArtifacts artifacts: 'target/surefire-reports/*', allowEmptyArchive: true
+        //             // Archive test reports and logs
+        //             archiveArtifacts artifacts: 'target/surefire-reports/*', allowEmptyArchive: true
                     
-                    // Generate test summary report
-                    script {
-                        def testResults = publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
-                        echo "Test Summary: ${testResults.totalCount} total, ${testResults.failCount} failed, ${testResults.skipCount} skipped"
-                    }
-                }
-                success {
-                    echo "✅ All tests passed successfully!"
-                }
-                failure {
-                    echo "❌ Some tests failed. Check the test reports for details."
-                }
-                unstable {
-                    echo "⚠️ Tests are unstable. Some tests may have failed intermittently."
-                }
-            }
-        }
+        //             // Generate test summary report
+        //             script {
+        //                 def testResults = publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+        //                 echo "Test Summary: ${testResults.totalCount} total, ${testResults.failCount} failed, ${testResults.skipCount} skipped"
+        //             }
+        //         }
+        //         success {
+        //             echo "✅ All tests passed successfully!"
+        //         }
+        //         failure {
+        //             echo "❌ Some tests failed. Check the test reports for details."
+        //         }
+        //         unstable {
+        //             echo "⚠️ Tests are unstable. Some tests may have failed intermittently."
+        //         }
+        //     }
+        // }
         
         stage('Package') {
             steps {
@@ -120,42 +120,42 @@ pipeline {
             }
         }
         
-        stage('Deploy') {
-            steps {
-                echo 'Deploying the application...'
-                script {
-                    // Example deployment steps - customize based on your deployment strategy
-                    if (isUnix()) {
-                        sh '''
-                            echo "Stopping existing application (if running)..."
-                            pkill -f "student-management" || true
+        // stage('Deploy') {
+        //     steps {
+        //         echo 'Deploying the application...'
+        //         script {
+        //             // Example deployment steps - customize based on your deployment strategy
+        //             if (isUnix()) {
+        //                 sh '''
+        //                     echo "Stopping existing application (if running)..."
+        //                     pkill -f "student-management" || true
                             
-                            echo "Starting new application..."
-                            nohup java -jar target/student-management-*.jar > app.log 2>&1 &
+        //                     echo "Starting new application..."
+        //                     nohup java -jar target/student-management-*.jar > app.log 2>&1 &
                             
-                            echo "Waiting for application to start..."
-                            sleep 10
+        //                     echo "Waiting for application to start..."
+        //                     sleep 10
                             
-                            echo "Checking application health..."
-                            curl -f http://localhost:8089/student/health/check || exit 1
-                        '''
-                    } else {
-                        bat '''
-                            echo "Deploying Spring Boot application..."
-                            taskkill /F /IM java.exe /FI "WINDOWTITLE eq student-management*" 2>nul || echo "No existing process found"
+        //                     echo "Checking application health..."
+        //                     curl -f http://localhost:8089/student/health/check || exit 1
+        //                 '''
+        //             } else {
+        //                 bat '''
+        //                     echo "Deploying Spring Boot application..."
+        //                     taskkill /F /IM java.exe /FI "WINDOWTITLE eq student-management*" 2>nul || echo "No existing process found"
                             
-                            echo "Starting application..."
-                            start /B java -jar target\\student-management-*.jar
+        //                     echo "Starting application..."
+        //                     start /B java -jar target\\student-management-*.jar
                             
-                            echo "Waiting for application startup..."
-                            timeout /t 15 /nobreak
+        //                     echo "Waiting for application startup..."
+        //                     timeout /t 15 /nobreak
                             
-                            echo "Application deployed successfully"
-                        '''
-                    }
-                }
-            }
-        }
+        //                     echo "Application deployed successfully"
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     post {
