@@ -23,9 +23,9 @@ pipeline {
                 echo 'Building the application...'
                 script {
                     if (isUnix()) {
-                        sh 'mvn clean compile'
+                        sh './mvnw clean compile'
                     } else {
-                        bat 'mvn clean compile'
+                        bat '.\\mvnw.cmd clean compile'
                     }
                 }
             }
@@ -33,12 +33,12 @@ pipeline {
         
         stage('Test') {
             steps {
-                echo 'Running tests...'
+                echo 'Running tests with H2 in-memory database...'
                 script {
                     if (isUnix()) {
-                        sh 'mvn test'
+                        sh './mvnw test -Dspring.profiles.active=test'
                     } else {
-                        bat 'mvn test'
+                        bat '.\\mvnw.cmd test -D"spring.profiles.active=test"'
                     }
                 }
             }
@@ -58,9 +58,9 @@ pipeline {
                 echo 'Packaging the application...'
                 script {
                     if (isUnix()) {
-                        sh 'mvn package -DskipTests'
+                        sh './mvnw package -DskipTests'
                     } else {
-                        bat 'mvn package -DskipTests'
+                        bat '.\\mvnw.cmd package -DskipTests'
                     }
                 }
             }
