@@ -124,18 +124,23 @@ pipeline {
                             echo "Stopping existing application (if running)..."
                             pkill -f "student-management" || true
                             
-                            echo "Starting new application in background..."
-                            nohup java -jar target/student-management-*.jar > app.log 2>&1 &
+                            echo "Creating data directory for H2 database..."
+                            mkdir -p data
+                            
+                            echo "Starting new application in background with production profile..."
+                            nohup java -jar -Dspring.profiles.active=prod target/student-management-*.jar > app.log 2>&1 &
                             
                             echo "Waiting for application to start..."
-                            sleep 15
+                            sleep 20
                             
                             echo "Checking if application is running..."
                             if pgrep -f "student-management"; then
                                 echo "✅ Application started successfully!"
+                                echo "🌐 Application URL: http://localhost:8089/student"
+                                echo "🗄️ H2 Console: http://localhost:8089/student/h2-console (if enabled)"
                             else
                                 echo "⚠️ Application may not have started properly. Check app.log"
-                                tail -20 app.log || echo "No log file found"
+                                tail -30 app.log || echo "No log file found"
                             fi
                         '''
                     } else {
@@ -143,13 +148,17 @@ pipeline {
                             echo "Stopping existing application (if running)..."
                             taskkill /F /IM java.exe /FI "COMMANDLINE eq *student-management*" 2>nul || echo "No existing process found"
                             
-                            echo "Starting application in background..."
-                            start /B java -jar target\\student-management-*.jar
+                            echo "Creating data directory for H2 database..."
+                            if not exist "data" mkdir data
+                            
+                            echo "Starting application in background with production profile..."
+                            start /B java -jar -Dspring.profiles.active=prod target\\student-management-*.jar
                             
                             echo "Waiting for application startup..."
-                            timeout /t 15 /nobreak
+                            timeout /t 20 /nobreak
                             
                             echo "✅ Application deployment initiated!"
+                            echo "🌐 Application URL: http://localhost:8089/student"
                         '''
                     }
                 }
