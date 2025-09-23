@@ -67,8 +67,8 @@ pipeline {
             }
             post {
                 always {
-                    // Publish test results
-                    publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+                    // Publish test results using junit step
+                    junit testResultsPattern: 'target/surefire-reports/*.xml', allowEmptyResults: true
                     
                     // Archive test reports
                     archiveArtifacts artifacts: 'target/surefire-reports/*', allowEmptyArchive: true
