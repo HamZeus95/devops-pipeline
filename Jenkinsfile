@@ -23,7 +23,17 @@ pipeline {
                 echo 'Building the application...'
                 script {
                     if (isUnix()) {
-                        sh './mvnw clean compile'
+                        sh '''
+                            echo "Setting execute permissions for Maven wrapper..."
+                            chmod +x mvnw
+                            echo "Building with Maven wrapper..."
+                            if ./mvnw clean compile; then
+                                echo "Build successful with Maven wrapper"
+                            else
+                                echo "Maven wrapper failed, trying system Maven..."
+                                mvn clean compile
+                            fi
+                        '''
                     } else {
                         bat '.\\mvnw.cmd clean compile'
                     }
@@ -36,7 +46,17 @@ pipeline {
                 echo 'Running tests with H2 in-memory database...'
                 script {
                     if (isUnix()) {
-                        sh './mvnw test -Dspring.profiles.active=test'
+                        sh '''
+                            echo "Setting execute permissions for Maven wrapper..."
+                            chmod +x mvnw
+                            echo "Running tests..."
+                            if ./mvnw test -Dspring.profiles.active=test; then
+                                echo "Tests successful with Maven wrapper"
+                            else
+                                echo "Maven wrapper failed, trying system Maven..."
+                                mvn test -Dspring.profiles.active=test
+                            fi
+                        '''
                     } else {
                         bat '.\\mvnw.cmd test -D"spring.profiles.active=test"'
                     }
@@ -58,7 +78,17 @@ pipeline {
                 echo 'Packaging the application...'
                 script {
                     if (isUnix()) {
-                        sh './mvnw package -DskipTests'
+                        sh '''
+                            echo "Setting execute permissions for Maven wrapper..."
+                            chmod +x mvnw
+                            echo "Packaging application..."
+                            if ./mvnw package -DskipTests; then
+                                echo "Packaging successful with Maven wrapper"
+                            else
+                                echo "Maven wrapper failed, trying system Maven..."
+                                mvn package -DskipTests
+                            fi
+                        '''
                     } else {
                         bat '.\\mvnw.cmd package -DskipTests'
                     }
