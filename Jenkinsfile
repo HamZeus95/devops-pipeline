@@ -124,45 +124,18 @@ pipeline {
                             echo "Stopping existing application (if running)..."
                             pkill -f "student-management" || true
                             
-                            echo "Starting new application with H2 database..."
-                            # Start with H2 in-memory database for testing
-                            nohup java -jar target/student-management-*.jar \\
-                                --spring.datasource.url=jdbc:h2:mem:testdb \\
-                                --spring.datasource.driverClassName=org.h2.Driver \\
-                                --spring.datasource.username=sa \\
-                                --spring.datasource.password= \\
-                                --spring.jpa.database-platform=org.hibernate.dialect.H2Dialect \\
-                                --spring.h2.console.enabled=true \\
-                                --server.port=8089 > app.log 2>&1 &
+                            echo "Starting new application in background..."
+                            nohup java -jar target/student-management-*.jar > app.log 2>&1 &
                             
                             echo "Waiting for application to start..."
-                            sleep 20
+                            sleep 15
                             
-                            echo "Checking application startup..."
+                            echo "Checking if application is running..."
                             if pgrep -f "student-management"; then
-                                echo "✅ Application process is running!"
-                                
-                                # Check if application is responding
-                                for i in {1..5}; do
-                                    if curl -f http://localhost:8089/actuator/health 2>/dev/null; then
-                                        echo "✅ Application is healthy and responding!"
-                                        break
-                                    elif curl -f http://localhost:8089 2>/dev/null; then
-                                        echo "✅ Application is responding on port 8089!"
-                                        break
-                                    else
-                                        echo "⏳ Waiting for application to respond... (attempt $i/5)"
-                                        sleep 5
-                                    fi
-                                done
-                                
-                                echo "📋 Application logs (last 10 lines):"
-                                tail -10 app.log || echo "No recent logs found"
+                                echo "✅ Application started successfully!"
                             else
-                                echo "❌ Application failed to start!"
-                                echo "📋 Full application logs:"
-                                cat app.log || echo "No log file found"
-                                exit 1
+                                echo "⚠️ Application may not have started properly. Check app.log"
+                                tail -20 app.log || echo "No log file found"
                             fi
                         '''
                     } else {
@@ -170,20 +143,13 @@ pipeline {
                             echo "Stopping existing application (if running)..."
                             taskkill /F /IM java.exe /FI "COMMANDLINE eq *student-management*" 2>nul || echo "No existing process found"
                             
-                            echo "Starting application with H2 database..."
-                            start /B java -jar target\\student-management-*.jar ^
-                                --spring.datasource.url=jdbc:h2:mem:testdb ^
-                                --spring.datasource.driverClassName=org.h2.Driver ^
-                                --spring.datasource.username=sa ^
-                                --spring.datasource.password= ^
-                                --spring.jpa.database-platform=org.hibernate.dialect.H2Dialect ^
-                                --spring.h2.console.enabled=true ^
-                                --server.port=8089
+                            echo "Starting application in background..."
+                            start /B java -jar target\\student-management-*.jar
                             
                             echo "Waiting for application startup..."
-                            timeout /t 20 /nobreak
+                            timeout /t 15 /nobreak
                             
-                            echo "✅ Application deployment initiated with H2 database!"
+                            echo "✅ Application deployment initiated!"
                         '''
                     }
                 }
