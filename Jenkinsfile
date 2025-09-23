@@ -43,32 +43,50 @@ pipeline {
         
         stage('Test') {
             steps {
-                echo 'Running tests with H2 in-memory database...'
+                echo 'Running comprehensive test suite with H2 in-memory database...'
                 script {
                     if (isUnix()) {
                         sh '''
                             echo "Setting execute permissions for Maven wrapper..."
                             chmod +x mvnw
-                            echo "Running tests..."
-                            if ./mvnw test -Dspring.profiles.active=test; then
-                                echo "Tests successful with Maven wrapper"
+                            echo "Running unit tests, integration tests, and performance tests..."
+                            if ./mvnw test -Dspring.profiles.active=test -Dtest.parallel.enabled=true; then
+                                echo "All tests successful with Maven wrapper"
                             else
                                 echo "Maven wrapper failed, trying system Maven..."
-                                mvn test -Dspring.profiles.active=test
+                                mvn test -Dspring.profiles.active=test -Dtest.parallel.enabled=true
                             fi
                         '''
                     } else {
-                        bat '.\\mvnw.cmd test -D"spring.profiles.active=test"'
+                        bat '''
+                            echo "Running comprehensive test suite..."
+                            .\\mvnw.cmd test -D"spring.profiles.active=test" -D"test.parallel.enabled=true"
+                        '''
                     }
                 }
             }
             post {
                 always {
-                    // Publish test results
+                    // Publish detailed test results
                     publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
                     
-                    // Archive test reports
+                    // Archive test reports and logs
                     archiveArtifacts artifacts: 'target/surefire-reports/*', allowEmptyArchive: true
+                    
+                    // Generate test summary report
+                    script {
+                        def testResults = publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+                        echo "Test Summary: ${testResults.totalCount} total, ${testResults.failCount} failed, ${testResults.skipCount} skipped"
+                    }
+                }
+                success {
+                    echo "✅ All tests passed successfully!"
+                }
+                failure {
+                    echo "❌ Some tests failed. Check the test reports for details."
+                }
+                unstable {
+                    echo "⚠️ Tests are unstable. Some tests may have failed intermittently."
                 }
             }
         }
