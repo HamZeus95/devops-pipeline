@@ -114,6 +114,20 @@ pipeline {
                 }
             }
         }
+        stage('Docker Build & Push') {
+  steps {
+    script {
+      def repo = "benalihamza/devops"
+      def tag = "${env.BUILD_NUMBER}"
+      docker.withRegistry('https://registry.hub.docker.com', 'docker') {
+        def built = docker.build("${repo}:${tag}")
+        built.push()
+        built.push('latest')
+      }
+    }
+  }
+}
+
         
         // stage('Deploy') {
         //     steps {
