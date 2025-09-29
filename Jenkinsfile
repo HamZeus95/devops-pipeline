@@ -117,16 +117,23 @@ pipeline {
 stage('Docker Build & Push') {
   steps {
     script {
-      def repo = "benali.hamza/devops"       // Docker Hub repo
-      def tag = "${env.BUILD_NUMBER}"        // Build number as tag
-      docker.withRegistry('https://index.docker.io/v1/', 'docker') {
-        def built = docker.build("${repo}:${tag}")
-        built.push()
-        built.push('latest')
+      def repo = "benali.hamza/devops"
+      def tag = "${env.BUILD_NUMBER}"
+
+      withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+        echo 'Building and pushing Docker image...'
+        sh """
+          echo "\$DOCKERHUB_PASS" | docker login -u "\$DOCKERHUB_USER" --password-stdin
+          docker build -t ${repo}:${tag} .
+          docker push ${repo}:${tag}
+          docker tag ${repo}:${tag} ${repo}:latest
+          docker push ${repo}:latest
+        """
       }
     }
   }
 }
+
 
 
 
