@@ -125,7 +125,7 @@ stage('Docker Build & Push') {
                     sh '''
                       set -e
                       echo "Logging into Docker Hub..."
-                      echo "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
+                      printf '%s\\n' "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
 
                       echo "Building Docker image..."
                       docker build -t ''' + dockerRepo + ''':''' + imgTag + ''' .
@@ -146,7 +146,7 @@ stage('Docker Build & Push') {
                 } else {
                     bat '''
                       echo Logging into Docker Hub...
-                      echo %DOCKERHUB_PASS% | docker login -u %DOCKERHUB_USER% --password-stdin
+                      echo %DOCKERHUB_PASS%| docker login -u %DOCKERHUB_USER% --password-stdin
                       
                       echo Building Docker image...
                       docker build -t ''' + dockerRepo + ''':''' + imgTag + ''' .
