@@ -115,71 +115,20 @@ pipeline {
             }
         }
 stage('Docker Build & Push') {
-    steps {
-        script {
-            def dockerRepo = "benalihamza/devops"
-            def imgTag = env.BUILD_NUMBER
-            
-            withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
-                if (isUnix()) {
-                    sh '''
-                      set -e
-                      echo "Logging into Docker Hub..."
-                      printf '%s\\n' "${DOCKERHUB_PASS}" | docker login -u "${DOCKERHUB_USER}" --password-stdin
-
-                      echo "Building Docker image..."
-                      docker build -t ''' + dockerRepo + ''':''' + imgTag + ''' .
-
-                      echo "Tagging image as latest..."
-                      docker tag ''' + dockerRepo + ''':''' + imgTag + ''' ''' + dockerRepo + ''':latest
-
-                      echo "Pushing ''' + dockerRepo + ''':''' + imgTag + '''..."
-                      docker push ''' + dockerRepo + ''':''' + imgTag + '''
-                      
-                      echo "Pushing ''' + dockerRepo + ''':latest..."
-                      docker push ''' + dockerRepo + ''':latest
-                      
-                      echo "Cleaning up local images..."
-                      docker rmi ''' + dockerRepo + ''':''' + imgTag + ''' || true
-                      docker rmi ''' + dockerRepo + ''':latest || true
-                    '''
-                } else {
-                    bat '''
-                      echo Logging into Docker Hub...
-                      echo %DOCKERHUB_PASS%| docker login -u %DOCKERHUB_USER% --password-stdin
-                      
-                      echo Building Docker image...
-                      docker build -t ''' + dockerRepo + ''':''' + imgTag + ''' .
-                      
-                      echo Tagging image as latest...
-                      docker tag ''' + dockerRepo + ''':''' + imgTag + ''' ''' + dockerRepo + ''':latest
-                      
-                      echo Pushing ''' + dockerRepo + ''':''' + imgTag + '''...
-                      docker push ''' + dockerRepo + ''':''' + imgTag + '''
-                      
-                      echo Pushing ''' + dockerRepo + ''':latest...
-                      docker push ''' + dockerRepo + ''':latest
-                      
-                      echo Cleaning up local images...
-                      docker rmi ''' + dockerRepo + ''':''' + imgTag + ''' 2>nul || echo "Image cleanup skipped"
-                      docker rmi ''' + dockerRepo + ''':latest 2>nul || echo "Latest image cleanup skipped"
-                    '''
-                }
-            }
-        }
+  steps {
+    script {
+      def repo = "benali.hamza/devops"       // Docker Hub repo
+      def tag = "${env.BUILD_NUMBER}"        // Build number as tag
+      docker.withRegistry('https://index.docker.io/v1/', 'docker') {
+        def built = docker.build("${repo}:${tag}")
+        built.push()
+        built.push('latest')
+      }
     }
-    post {
-        success {
-            echo "🐳 Docker image built and pushed successfully!"
-            echo "📦 Image: benalihamza/devops:${env.BUILD_NUMBER}"
-            echo "🏷️ Latest tag updated"
-        }
-        failure {
-            echo "❌ Docker build/push failed!"
-            echo "🔍 Check Docker credentials and Dockerfile"
-        }
-    }
+  }
 }
+
+
 
 
         
