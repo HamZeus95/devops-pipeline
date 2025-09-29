@@ -1,9 +1,17 @@
-# Dockerfile
+# Use Eclipse Temurin JRE 17 as base image
 FROM eclipse-temurin:17-jre
-ARG JAR_FILE=target/*.jar
 
-# Copy jar produced by your build step
-COPY ${JAR_FILE} /app/app.jar
+# Set working directory
+WORKDIR /app
 
+# Copy the JAR file from target directory
+COPY target/student-management-*.jar app.jar
+
+# Expose the application port
 EXPOSE 8089
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+# Set the Spring profile to production
+ENV SPRING_PROFILES_ACTIVE=prod
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
