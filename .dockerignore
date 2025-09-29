@@ -1,7 +1,22 @@
-target/
+# Ignore Maven wrapper and local repository
 .mvn/
 .m2/
+
+# Ignore git files
 .git
 .gitignore
-Dockerfile
+
+# Ignore documentation
 README.md
+
+# Ignore target directory contents except JAR files
+target/classes/
+target/generated-sources/
+target/generated-test-sources/
+target/maven-archiver/
+target/maven-status/
+target/surefire-reports/
+target/test-classes/
+
+# But keep the JAR files
+!target/*.jar
