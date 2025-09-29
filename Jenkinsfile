@@ -114,19 +114,44 @@ pipeline {
                 }
             }
         }
-        stage('Docker Build & Push') {
-  steps {
-    script {
-      def repo = "benalihamza/devops"
-      def tag = "${env.BUILD_NUMBER}"
-      docker.withRegistry('https://registry.hub.docker.com', 'docker') {
-        def built = docker.build("${repo}:${tag}")
-        built.push()
-        built.push('latest')
-      }
+stage('Docker Build & Push') {
+    steps {
+        script {
+            def dockerRepo = "benalihamza/devops"
+            def imgTag = "${env.BUILD_NUMBER}"
+            withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                if (isUnix()) {
+                    sh """
+                      set -e
+                      echo "Logging into Docker Hub..."
+                      echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+
+                      echo "Building Docker image..."
+                      docker build -t ${dockerRepo}:${imgTag} .
+
+                      echo "Tagging image as latest..."
+                      docker tag ${dockerRepo}:${imgTag} ${dockerRepo}:latest
+
+                      echo "Pushing ${dockerRepo}:${imgTag}..."
+                      docker push ${dockerRepo}:${imgTag}
+                      echo "Pushing ${dockerRepo}:latest..."
+                      docker push ${dockerRepo}:latest
+                    """
+                } else {
+                    bat """
+                      echo Logging into Docker Hub...
+                      docker login -u %DOCKERHUB_USER% -p %DOCKERHUB_PASS%
+                      docker build -t ${dockerRepo}:${imgTag} .
+                      docker tag ${dockerRepo}:${imgTag} ${dockerRepo}:latest
+                      docker push ${dockerRepo}:${imgTag}
+                      docker push ${dockerRepo}:latest
+                    """
+                }
+            }
+        }
     }
-  }
 }
+
 
         
         // stage('Deploy') {
