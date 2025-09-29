@@ -117,7 +117,7 @@ pipeline {
 stage('Docker Build & Push') {
   steps {
     script {
-      def repo = "benali.hamza/devops"
+      def repo = "benalihamza/devops"
       def tag = "${env.BUILD_NUMBER}"
 
       withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
