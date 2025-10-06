@@ -43,11 +43,11 @@ pipeline {
                                     -p 9000:9000 \\
                                     sonarqube:latest
                                 echo "Waiting for SonarQube to initialize (this may take a few minutes)..."
-                                sleep 120
+                                sleep 150
                             fi
                             
                             echo "Checking SonarQube health..."
-                            timeout 300 bash -c 'until curl -f http://localhost:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
+                            timeout 300 bash -c 'until curl -f http://192.168.182.146:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
                             echo "✅ SonarQube is ready!"
                         '''
                     } else {
@@ -76,7 +76,7 @@ pipeline {
                             )
                             
                             echo "✅ SonarQube setup completed!"
-                            echo "🌐 SonarQube will be available at: http://localhost:9000"
+                            echo "🌐 SonarQube will be available at: http://192.168.182.146:9000"
                         '''
                     }
                 }
@@ -84,7 +84,7 @@ pipeline {
             post {
                 success {
                     echo "🐳 SonarQube Docker container is running"
-                    echo "🌐 Access SonarQube at: http://localhost:9000"
+                    echo "🌐 Access SonarQube at: http://192.168.182.146:9000"
                     echo "📝 Default credentials: admin/admin (you'll be prompted to change)"
                 }
                 failure {
@@ -246,7 +246,7 @@ pipeline {
                     } catch (Exception e) {
                         echo "⚠️ SonarQube token not found or invalid. Skipping analysis."
                         echo "🔧 To enable SonarQube analysis:"
-                        echo "   1. Go to SonarQube: http://localhost:9000"
+                        echo "   1. Go to SonarQube: http://192.168.182.146:9000"
                         echo "   2. Login (admin/admin) and create a token"
                         echo "   3. Add token to Jenkins credentials with ID 'sonarqube-token'"
                         currentBuild.result = 'SUCCESS' // Don't fail the build for missing SonarQube token
@@ -256,7 +256,7 @@ pipeline {
             post {
                 always {
                     echo "📊 SonarQube analysis completed"
-                    echo "🔍 View detailed report at: ${env.SONAR_HOST_URL ?: 'http://localhost:9000'}/dashboard?id=student-management"
+                    echo "🔍 View detailed report at: ${env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management"
                 }
                 success {
                     echo "✅ SonarQube analysis completed successfully!"
@@ -379,8 +379,8 @@ stage('Docker Build & Push') {
             echo "🎉 Pipeline completed successfully!"
             echo "📍 JAR file location: workspace/target/*.jar"
             echo "📋 Build artifacts are available in Jenkins"
-            echo "🐳 SonarQube is running at: http://localhost:9000"
-            echo "📊 View your code quality report at: http://localhost:9000/dashboard?id=student-management"
+            echo "🐳 SonarQube is running at: http://192.168.182.146:9000"
+            echo "📊 View your code quality report at: http://192.168.182.146:9000/dashboard?id=student-management"
             
             // Slack notification for success
             slackSend(
@@ -392,7 +392,7 @@ stage('Docker Build & Push') {
                         "Branch: `${env.BRANCH_NAME}`\n" +
                         "Duration: `${currentBuild.durationString}`\n" +
                         "🌐 Application URL: http://localhost:8089/student\n" +
-                        "📊 SonarQube Report: ${env.SONAR_HOST_URL ?: 'http://localhost:9000'}/dashboard?id=student-management"
+                        "📊 SonarQube Report: ${env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management"
             )
             
             // Email notification for success
@@ -419,7 +419,7 @@ stage('Docker Build & Push') {
                 
                 <h3>Quality Reports:</h3>
                 <ul>
-                    <li>📊 <a href="${env.SONAR_HOST_URL ?: 'http://localhost:9000'}/dashboard?id=student-management">SonarQube Quality Dashboard</a></li>
+                    <li>📊 <a href="${env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management">SonarQube Quality Dashboard</a></li>
                     <li>🧪 <a href="${env.BUILD_URL}testReport/">Test Results</a></li>
                 </ul>
                 """,
