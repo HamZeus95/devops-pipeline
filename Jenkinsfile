@@ -171,7 +171,7 @@ pipeline {
                     
                     try {
                         echo "🔍 Attempting to load SonarQube credentials..."
-                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                        withCredentials([string(credentialsId: 'sonarqube-token-new', variable: 'SONAR_TOKEN')]) {
                             echo "✅ SonarQube credentials loaded successfully!"
                         if (isUnix()) {
                             sh """
