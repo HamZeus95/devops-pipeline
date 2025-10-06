@@ -181,21 +181,49 @@ pipeline {
                                 echo "Build Number: \${BUILD_NUMBER}"
                                 echo "Working Directory: \$(pwd)"
                                 
+                                # Test SonarQube connectivity first
+                                echo "🔍 Testing SonarQube connectivity..."
+                                if curl -f ${sonarQubeUrl}/api/system/status; then
+                                    echo "✅ SonarQube server is accessible"
+                                else
+                                    echo "❌ Cannot reach SonarQube server"
+                                    exit 1
+                                fi
+                                
+                                # Check if Docker can run
+                                echo "🔍 Testing Docker..."
+                                docker --version
+                                
+                                # Try to pull SonarQube scanner image first
+                                echo "🔍 Pulling SonarQube scanner image..."
+                                docker pull sonarsource/sonar-scanner-cli:latest
+                                
                                 # Check if target/classes exists
                                 if [ -d "target/classes" ]; then
                                     echo "✅ target/classes directory found"
-                                    ls -la target/classes/
+                                    ls -la target/classes/ | head -10
                                 else
                                     echo "❌ target/classes directory not found"
                                 fi
                                 
-                                # Run SonarQube analysis
-                                docker run --rm \\
+                                # Check if source directories exist
+                                if [ -d "src/main/java" ]; then
+                                    echo "✅ src/main/java directory found"
+                                    find src/main/java -name "*.java" | wc -l
+                                else
+                                    echo "❌ src/main/java directory not found"
+                                fi
+                                
+                                # Run SonarQube analysis with more explicit settings
+                                echo "🚀 Starting SonarQube analysis..."
+                                
+                                # Try with --network host first
+                                if docker run --rm \\
                                     -e SONAR_HOST_URL=${sonarQubeUrl} \\
                                     -e SONAR_LOGIN=\$SONAR_TOKEN \\
                                     -v \$(pwd):/usr/src \\
                                     --network host \\
-                                    sonarsource/sonar-scanner-cli \\
+                                    sonarsource/sonar-scanner-cli:latest \\
                                     -Dsonar.projectKey=${projectKey} \\
                                     -Dsonar.projectName="${projectName}" \\
                                     -Dsonar.projectVersion=\${BUILD_NUMBER} \\
@@ -207,7 +235,29 @@ pipeline {
                                     -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \\
                                     -Dsonar.java.source=17 \\
                                     -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**' \\
-                                    -Dsonar.verbose=true
+                                    -Dsonar.verbose=true; then
+                                    echo "✅ SonarQube analysis completed successfully!"
+                                else
+                                    echo "❌ SonarQube analysis failed with --network host"
+                                    echo "🔄 Trying without --network host..."
+                                    docker run --rm \\
+                                        -e SONAR_HOST_URL=${sonarQubeUrl} \\
+                                        -e SONAR_LOGIN=\$SONAR_TOKEN \\
+                                        -v \$(pwd):/usr/src \\
+                                        sonarsource/sonar-scanner-cli:latest \\
+                                        -Dsonar.projectKey=${projectKey} \\
+                                        -Dsonar.projectName="${projectName}" \\
+                                        -Dsonar.projectVersion=\${BUILD_NUMBER} \\
+                                        -Dsonar.sources=src/main/java \\
+                                        -Dsonar.tests=src/test/java \\
+                                        -Dsonar.java.binaries=target/classes \\
+                                        -Dsonar.java.test.binaries=target/test-classes \\
+                                        -Dsonar.junit.reportPaths=target/surefire-reports \\
+                                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \\
+                                        -Dsonar.java.source=17 \\
+                                        -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**' \\
+                                        -Dsonar.verbose=true
+                                fi
                             """
                         } else {
                             bat """
@@ -217,19 +267,39 @@ pipeline {
                                 echo "Build Number: %BUILD_NUMBER%"
                                 echo "Working Directory: %cd%"
                                 
-                                if exist "target\\classes" (
-                                    echo "✅ target\\classes directory found"
-                                    dir target\\classes
+                                echo "🔍 Testing SonarQube connectivity..."
+                                curl -f ${sonarQubeUrl}/api/system/status
+                                if %errorlevel% neq 0 (
+                                    echo "❌ Cannot reach SonarQube server"
+                                    exit /b 1
+                                )
+                                echo "✅ SonarQube server is accessible"
+                                
+                                echo "🔍 Testing Docker..."
+                                docker --version
+                                
+                                echo "🔍 Pulling SonarQube scanner image..."
+                                docker pull sonarsource/sonar-scanner-cli:latest
+                                
+                                if exist "target\\\\classes" (
+                                    echo "✅ target\\\\classes directory found"
                                 ) else (
-                                    echo "❌ target\\classes directory not found"
+                                    echo "❌ target\\\\classes directory not found"
                                 )
                                 
+                                if exist "src\\main\\java" (
+                                    echo "✅ src\\main\\java directory found"
+                                ) else (
+                                    echo "❌ src\\main\\java directory not found"
+                                )
+                                
+                                echo "🚀 Starting SonarQube analysis..."
                                 docker run --rm ^
                                     -e SONAR_HOST_URL=${sonarQubeUrl} ^
                                     -e SONAR_LOGIN=%SONAR_TOKEN% ^
                                     -v %cd%:/usr/src ^
                                     --network host ^
-                                    sonarsource/sonar-scanner-cli ^
+                                    sonarsource/sonar-scanner-cli:latest ^
                                     -Dsonar.projectKey=${projectKey} ^
                                     -Dsonar.projectName="${projectName}" ^
                                     -Dsonar.projectVersion=%BUILD_NUMBER% ^
