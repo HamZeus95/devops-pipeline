@@ -170,7 +170,9 @@ pipeline {
                     def projectName = 'Student Management Application'
                     
                     try {
+                        echo "🔍 Attempting to load SonarQube credentials..."
                         withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                            echo "✅ SonarQube credentials loaded successfully!"
                         if (isUnix()) {
                             sh """
                                 echo "Starting SonarQube analysis with Docker..."
@@ -244,11 +246,15 @@ pipeline {
                         }
                         }
                     } catch (Exception e) {
+                        echo "❌ SonarQube credentials error: ${e.getMessage()}"
+                        echo "🔍 Error details: ${e.toString()}"
                         echo "⚠️ SonarQube token not found or invalid. Skipping analysis."
                         echo "🔧 To enable SonarQube analysis:"
                         echo "   1. Go to SonarQube: http://192.168.182.146:9000"
                         echo "   2. Login (admin/admin) and create a token"
                         echo "   3. Add token to Jenkins credentials with ID 'sonarqube-token'"
+                        echo "   4. Ensure credential type is 'Secret text'"
+                        echo "   5. Ensure credential scope is 'Global'"
                         currentBuild.result = 'SUCCESS' // Don't fail the build for missing SonarQube token
                     }
                 }
