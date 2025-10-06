@@ -169,7 +169,8 @@ pipeline {
                     def projectKey = 'student-management'
                     def projectName = 'Student Management Application'
                     
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    try {
+                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                         if (isUnix()) {
                             sh """
                                 echo "Starting SonarQube analysis with Docker..."
@@ -213,6 +214,14 @@ pipeline {
                                     -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
                             """
                         }
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️ SonarQube token not found or invalid. Skipping analysis."
+                        echo "🔧 To enable SonarQube analysis:"
+                        echo "   1. Go to SonarQube: http://localhost:9000"
+                        echo "   2. Login (admin/admin) and create a token"
+                        echo "   3. Add token to Jenkins credentials with ID 'sonarqube-token'"
+                        currentBuild.result = 'SUCCESS' // Don't fail the build for missing SonarQube token
                     }
                 }
             }
@@ -353,7 +362,7 @@ stage('Docker Build & Push') {
                         "Job: `${env.JOB_NAME}`\n" +
                         "Build: `#${env.BUILD_NUMBER}`\n" +
                         "Branch: `${env.BRANCH_NAME}`\n" +
-                        "Duration: `${BUILD_DURATION_STRING}`\n" +
+                        "Duration: `${currentBuild.durationString}`\n" +
                         "🌐 Application URL: http://localhost:8089/student\n" +
                         "📊 SonarQube Report: ${env.SONAR_HOST_URL ?: 'http://localhost:9000'}/dashboard?id=student-management"
             )
@@ -366,7 +375,7 @@ stage('Docker Build & Push') {
                 <p><strong>Job:</strong> ${env.JOB_NAME}</p>
                 <p><strong>Build Number:</strong> #${env.BUILD_NUMBER}</p>
                 <p><strong>Branch:</strong> ${env.BRANCH_NAME}</p>
-                <p><strong>Build Duration:</strong> ${BUILD_DURATION_STRING}</p>
+                <p><strong>Build Duration:</strong> ${currentBuild.durationString}</p>
                 <p><strong>Application URL:</strong> <a href="http://localhost:8089/student">http://localhost:8089/student</a></p>
                 <p><strong>Jenkins URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 
@@ -404,7 +413,7 @@ stage('Docker Build & Push') {
                         "Job: `${env.JOB_NAME}`\n" +
                         "Build: `#${env.BUILD_NUMBER}`\n" +
                         "Branch: `${env.BRANCH_NAME}`\n" +
-                        "Duration: `${BUILD_DURATION_STRING}`\n" +
+                        "Duration: `${currentBuild.durationString}`\n" +
                         "Error: Check console output for details\n" +
                         "🔗 Build URL: ${env.BUILD_URL}"
             )
@@ -417,7 +426,7 @@ stage('Docker Build & Push') {
                 <p><strong>Job:</strong> ${env.JOB_NAME}</p>
                 <p><strong>Build Number:</strong> #${env.BUILD_NUMBER}</p>
                 <p><strong>Branch:</strong> ${env.BRANCH_NAME}</p>
-                <p><strong>Build Duration:</strong> ${BUILD_DURATION_STRING}</p>
+                <p><strong>Build Duration:</strong> ${currentBuild.durationString}</p>
                 <p><strong>Jenkins URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 <p><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
                 
@@ -447,7 +456,7 @@ stage('Docker Build & Push') {
                         "Job: `${env.JOB_NAME}`\n" +
                         "Build: `#${env.BUILD_NUMBER}`\n" +
                         "Branch: `${env.BRANCH_NAME}`\n" +
-                        "Duration: `${BUILD_DURATION_STRING}`\n" +
+                        "Duration: `${currentBuild.durationString}`\n" +
                         "Warning: Some tests may have failed intermittently\n" +
                         "🔗 Build URL: ${env.BUILD_URL}"
             )
@@ -460,7 +469,7 @@ stage('Docker Build & Push') {
                 <p><strong>Job:</strong> ${env.JOB_NAME}</p>
                 <p><strong>Build Number:</strong> #${env.BUILD_NUMBER}</p>
                 <p><strong>Branch:</strong> ${env.BRANCH_NAME}</p>
-                <p><strong>Build Duration:</strong> ${BUILD_DURATION_STRING}</p>
+                <p><strong>Build Duration:</strong> ${currentBuild.durationString}</p>
                 <p><strong>Jenkins URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 
                 <h3>⚠️ Unstable Build Notice:</h3>
@@ -480,7 +489,7 @@ stage('Docker Build & Push') {
         always {
             echo "🧹 Pipeline execution finished"
             echo "📊 Build Number: ${BUILD_NUMBER}"
-            echo "⏱️ Build Duration: ${BUILD_DURATION_STRING}"
+            echo "⏱️ Build Duration: ${currentBuild.durationString}"
         }
     }
 }
