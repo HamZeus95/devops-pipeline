@@ -8,7 +8,7 @@ pipeline {
     
     environment {
         MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository' // Use a local Maven repository in the workspace
-        SONAR_HOST_URL = 'http://localhost:9000' // SonarQube server URL
+        SONAR_HOST_URL = 'http://192.168.182.146:9000' // SonarQube server URL
     }
 
     stages {
@@ -165,7 +165,7 @@ pipeline {
             steps {
                 echo 'Running SonarQube code quality analysis...'
                 script {
-                    def sonarQubeUrl = env.SONAR_HOST_URL ?: 'http://localhost:9000'
+                    def sonarQubeUrl = env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'
                     def projectKey = 'student-management'
                     def projectName = 'Student Management Application'
                     
@@ -174,6 +174,20 @@ pipeline {
                         if (isUnix()) {
                             sh """
                                 echo "Starting SonarQube analysis with Docker..."
+                                echo "SonarQube URL: ${sonarQubeUrl}"
+                                echo "Project Key: ${projectKey}"
+                                echo "Build Number: \${BUILD_NUMBER}"
+                                echo "Working Directory: \$(pwd)"
+                                
+                                # Check if target/classes exists
+                                if [ -d "target/classes" ]; then
+                                    echo "✅ target/classes directory found"
+                                    ls -la target/classes/
+                                else
+                                    echo "❌ target/classes directory not found"
+                                fi
+                                
+                                # Run SonarQube analysis
                                 docker run --rm \\
                                     -e SONAR_HOST_URL=${sonarQubeUrl} \\
                                     -e SONAR_LOGIN=\$SONAR_TOKEN \\
@@ -190,11 +204,24 @@ pipeline {
                                     -Dsonar.junit.reportPaths=target/surefire-reports \\
                                     -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \\
                                     -Dsonar.java.source=17 \\
-                                    -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**'
+                                    -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**' \\
+                                    -Dsonar.verbose=true
                             """
                         } else {
                             bat """
                                 echo "Starting SonarQube analysis with Docker..."
+                                echo "SonarQube URL: ${sonarQubeUrl}"
+                                echo "Project Key: ${projectKey}"
+                                echo "Build Number: %BUILD_NUMBER%"
+                                echo "Working Directory: %cd%"
+                                
+                                if exist "target\\classes" (
+                                    echo "✅ target\\classes directory found"
+                                    dir target\\classes
+                                ) else (
+                                    echo "❌ target\\classes directory not found"
+                                )
+                                
                                 docker run --rm ^
                                     -e SONAR_HOST_URL=${sonarQubeUrl} ^
                                     -e SONAR_LOGIN=%SONAR_TOKEN% ^
@@ -211,7 +238,8 @@ pipeline {
                                     -Dsonar.junit.reportPaths=target/surefire-reports ^
                                     -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml ^
                                     -Dsonar.java.source=17 ^
-                                    -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
+                                    -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/** ^
+                                    -Dsonar.verbose=true
                             """
                         }
                         }
