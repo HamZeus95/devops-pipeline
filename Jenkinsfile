@@ -273,33 +273,6 @@ pipeline {
                             currentBuild.result = 'SUCCESS'  // Don't fail the entire build
                         }
                     }
-                    } else {
-                        bat """
-                            echo "Starting SonarQube analysis with Docker..."
-                            echo "SonarQube URL: ${sonarQubeUrl}"
-                            echo "Project Key: ${projectKey}"
-                            
-                            echo "🔍 Testing SonarQube connectivity..."
-                            curl -f ${sonarQubeUrl}/api/system/status
-                            
-                            echo "🚀 Starting SonarQube analysis..."
-                            docker run --rm ^
-                                -e SONAR_HOST_URL=${sonarQubeUrl} ^
-                                -v %cd%:/usr/src ^
-                                --network host ^
-                                sonarsource/sonar-scanner-cli:latest ^
-                                -Dsonar.projectKey=${projectKey} ^
-                                -Dsonar.projectName="${projectName}" ^
-                                -Dsonar.projectVersion=%BUILD_NUMBER% ^
-                                -Dsonar.sources=src/main/java ^
-                                -Dsonar.tests=src/test/java ^
-                                -Dsonar.java.binaries=target/classes ^
-                                -Dsonar.java.test.binaries=target/test-classes ^
-                                -Dsonar.junit.reportPaths=target/surefire-reports ^
-                                -Dsonar.java.source=17 ^
-                                -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
-                        """
-                    }
                 }
             }
             post {
@@ -347,25 +320,36 @@ pipeline {
                 }
             }
         }
-stage('Docker Build & Push') {
-  steps {
-    script {
-      def repo = "benalihamza/devops"
-      def tag = "${env.BUILD_NUMBER}"
+        
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    def repo = "benalihamza/devops"
+                    def tag = "${env.BUILD_NUMBER}"
 
-      withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
-        echo 'Building and pushing Docker image...'
-        sh """
-          echo "\$DOCKERHUB_PASS" | docker login -u "\$DOCKERHUB_USER" --password-stdin
-          docker build -t ${repo}:${tag} .
-          docker push ${repo}:${tag}
-          docker tag ${repo}:${tag} ${repo}:latest
-          docker push ${repo}:latest
-        """
-      }
-    }
-  }
-}
+                    withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                        echo 'Building and pushing Docker image...'
+                        if (isUnix()) {
+                            sh """
+                                echo "\$DOCKERHUB_PASS" | docker login -u "\$DOCKERHUB_USER" --password-stdin
+                                docker build -t ${repo}:${tag} .
+                                docker push ${repo}:${tag}
+                                docker tag ${repo}:${tag} ${repo}:latest
+                                docker push ${repo}:latest
+                            """
+                        } else {
+                            bat """
+                                echo %DOCKERHUB_PASS% | docker login -u "%DOCKERHUB_USER%" --password-stdin
+                                docker build -t ${repo}:${tag} .
+                                docker push ${repo}:${tag}
+                                docker tag ${repo}:${tag} ${repo}:latest
+                                docker push ${repo}:latest
+                            """
+                        }
+                    }
+                }
+            }
+        }
 
 
 
