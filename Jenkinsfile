@@ -49,6 +49,11 @@ pipeline {
                             
                             echo "Checking SonarQube health..."
                             timeout 300 bash -c 'until curl -f http://localhost:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
+                            
+                            echo "🔧 Disabling SonarQube authentication for Jenkins analysis..."
+                            curl -u admin:Hamza310795§ -X POST "http://localhost:9000/api/settings/set?key=sonar.forceAuthentication&value=false" || echo "Failed to disable authentication, will try with credentials"
+                            curl -u admin:Hamza310795§ -X POST "http://localhost:9000/api/permissions/add_group?groupName=Anyone&permission=scan" || echo "Failed to add Anyone scan permission"
+                            
                             echo "✅ SonarQube is ready!"
                         '''
                     } else {
@@ -179,14 +184,12 @@ pipeline {
                     def analysisSuccess = false
                     
                     try {
-                        // Try with SonarQube admin credentials first
+                        // Try with SonarQube admin credentials using sonar.login parameter
                         echo "🔍 Trying SonarQube analysis with admin credentials..."
                         if (isUnix()) {
                             sh """
                                 docker run --rm \\
                                     -e SONAR_HOST_URL=${sonarQubeUrl} \\
-                                    -e SONAR_LOGIN=admin \\
-                                    -e SONAR_PASSWORD=Hamza310795! \\
                                     -v \$(pwd):/usr/src \\
                                     --network host \\
                                     sonarsource/sonar-scanner-cli:latest \\
@@ -199,14 +202,14 @@ pipeline {
                                     -Dsonar.java.test.binaries=target/test-classes \\
                                     -Dsonar.junit.reportPaths=target/surefire-reports \\
                                     -Dsonar.java.source=17 \\
+                                    -Dsonar.login=admin \\
+                                    -Dsonar.password=Hamza310795§ \\
                                     -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**'
                             """
                         } else {
                             bat """
                                 docker run --rm ^
                                     -e SONAR_HOST_URL=${sonarQubeUrl} ^
-                                    -e SONAR_LOGIN=admin ^
-                                    -e SONAR_PASSWORD=Hamza310795! ^
                                     -v %cd%:/usr/src ^
                                     --network host ^
                                     sonarsource/sonar-scanner-cli:latest ^
@@ -219,6 +222,8 @@ pipeline {
                                     -Dsonar.java.test.binaries=target/test-classes ^
                                     -Dsonar.junit.reportPaths=target/surefire-reports ^
                                     -Dsonar.java.source=17 ^
+                                    -Dsonar.login=admin ^
+                                    -Dsonar.password=Hamza310795§ ^
                                     -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
                             """
                         }
