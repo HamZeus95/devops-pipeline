@@ -7,7 +7,8 @@ pipeline {
     }
     
     environment {
-        MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository' // Use a local Maven repository in the workspace
+        MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository' // Use a local Maven repository in the wo                                docker run --rm \\
+                                    -e SONAR_HOST_URL=${sonarQubeUrl} \\pace
         SONAR_HOST_URL = 'http://192.168.182.146:9000' // SonarQube server URL
     }
 
@@ -171,7 +172,7 @@ pipeline {
                     
                     try {
                         echo "🔍 Attempting to load SonarQube credentials..."
-                        withCredentials([string(credentialsId: 'sonarqube-token-new', variable: 'SONAR_TOKEN')]) {
+                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                             echo "✅ SonarQube credentials loaded successfully!"
                         if (isUnix()) {
                             sh """
@@ -242,7 +243,6 @@ pipeline {
                                     echo "🔄 Trying without --network host..."
                                     docker run --rm \\
                                         -e SONAR_HOST_URL=${sonarQubeUrl} \\
-                                        -e SONAR_LOGIN=\$SONAR_TOKEN \\
                                         -v \$(pwd):/usr/src \\
                                         sonarsource/sonar-scanner-cli:latest \\
                                         -Dsonar.projectKey=${projectKey} \\
