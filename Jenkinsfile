@@ -8,7 +8,8 @@ pipeline {
     
     environment {
         MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository' // Use a local Maven repository in the workspace
-        SONAR_HOST_URL = 'http://192.168.182.146:9000' // SonarQube server URL
+        SONAR_HOST_URL = 'http://localhost:9000' // SonarQube server URL (localhost for Docker containers)
+        SONAR_HOST_URL_EXTERNAL = 'http://192.168.182.146:9000' // External access URL for reports
     }
 
     stages {
@@ -47,7 +48,7 @@ pipeline {
                             fi
                             
                             echo "Checking SonarQube health..."
-                            timeout 300 bash -c 'until curl -f http://192.168.182.146:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
+                            timeout 300 bash -c 'until curl -f http://localhost:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
                             echo "✅ SonarQube is ready!"
                         '''
                     } else {
@@ -76,7 +77,8 @@ pipeline {
                             )
                             
                             echo "✅ SonarQube setup completed!"
-                            echo "🌐 SonarQube will be available at: http://192.168.182.146:9000"
+                            echo "🌐 SonarQube will be available at: http://localhost:9000 (VM internal)"
+                            echo "🌐 External access: http://192.168.182.146:9000 (configure VM networking)"
                         '''
                     }
                 }
@@ -165,7 +167,8 @@ pipeline {
             steps {
                 echo 'Running SonarQube code quality analysis...'
                 script {
-                    def sonarQubeUrl = env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'
+                    def sonarQubeUrl = env.SONAR_HOST_URL ?: 'http://localhost:9000'
+                    def sonarQubeUrlExternal = env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.182.146:9000'
                     def projectKey = 'student-management'
                     def projectName = 'Student Management Application'
                     
@@ -278,7 +281,8 @@ pipeline {
             post {
                 always {
                     echo "📊 SonarQube analysis completed"
-                    echo "🔍 View detailed report at: ${env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management"
+                    echo "🔍 View detailed report at: ${env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management"
+                    echo "💡 If external access fails, configure VM network settings (Bridged mode or Port Forwarding)"
                 }
                 success {
                     echo "✅ SonarQube analysis completed successfully!"
@@ -414,6 +418,7 @@ pipeline {
             echo "📋 Build artifacts are available in Jenkins"
             echo "🐳 SonarQube is running at: http://192.168.182.146:9000"
             echo "📊 View your code quality report at: http://192.168.182.146:9000/dashboard?id=student-management"
+            echo "💡 If external access fails, configure VM networking (Bridged mode recommended)"
             
             // Slack notification for success
             slackSend(
@@ -425,7 +430,7 @@ pipeline {
                         "Branch: `${env.BRANCH_NAME}`\n" +
                         "Duration: `${currentBuild.durationString}`\n" +
                         "🌐 Application URL: http://localhost:8089/student\n" +
-                        "📊 SonarQube Report: ${env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management"
+                        "📊 SonarQube Report: ${env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management"
             )
             
             // Email notification for success
@@ -452,7 +457,7 @@ pipeline {
                 
                 <h3>Quality Reports:</h3>
                 <ul>
-                    <li>📊 <a href="${env.SONAR_HOST_URL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management">SonarQube Quality Dashboard</a></li>
+                    <li>📊 <a href="${env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.182.146:9000'}/dashboard?id=student-management">SonarQube Quality Dashboard</a></li>
                     <li>🧪 <a href="${env.BUILD_URL}testReport/">Test Results</a></li>
                 </ul>
                 """,
