@@ -7,8 +7,7 @@ pipeline {
     }
     
     environment {
-        MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository' // Use a local Maven repository in the wo                                docker run --rm \\
-                                    -e SONAR_HOST_URL=${sonarQubeUrl} \\pace
+        MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository' // Use a local Maven repository in the workspace
         SONAR_HOST_URL = 'http://192.168.182.146:9000' // SonarQube server URL
     }
 
@@ -170,162 +169,61 @@ pipeline {
                     def projectKey = 'student-management'
                     def projectName = 'Student Management Application'
                     
-                    try {
-                        echo "🔍 Attempting to load SonarQube credentials..."
-                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-                            echo "✅ SonarQube credentials loaded successfully!"
-                        if (isUnix()) {
-                            sh """
-                                echo "Starting SonarQube analysis with Docker..."
-                                echo "SonarQube URL: ${sonarQubeUrl}"
-                                echo "Project Key: ${projectKey}"
-                                echo "Build Number: \${BUILD_NUMBER}"
-                                echo "Working Directory: \$(pwd)"
-                                
-                                # Test SonarQube connectivity first
-                                echo "🔍 Testing SonarQube connectivity..."
-                                if curl -f ${sonarQubeUrl}/api/system/status; then
-                                    echo "✅ SonarQube server is accessible"
-                                else
-                                    echo "❌ Cannot reach SonarQube server"
-                                    exit 1
-                                fi
-                                
-                                # Check if Docker can run
-                                echo "🔍 Testing Docker..."
-                                docker --version
-                                
-                                # Try to pull SonarQube scanner image first
-                                echo "🔍 Pulling SonarQube scanner image..."
-                                docker pull sonarsource/sonar-scanner-cli:latest
-                                
-                                # Check if target/classes exists
-                                if [ -d "target/classes" ]; then
-                                    echo "✅ target/classes directory found"
-                                    ls -la target/classes/ | head -10
-                                else
-                                    echo "❌ target/classes directory not found"
-                                fi
-                                
-                                # Check if source directories exist
-                                if [ -d "src/main/java" ]; then
-                                    echo "✅ src/main/java directory found"
-                                    find src/main/java -name "*.java" | wc -l
-                                else
-                                    echo "❌ src/main/java directory not found"
-                                fi
-                                
-                                # Run SonarQube analysis with more explicit settings
-                                echo "🚀 Starting SonarQube analysis..."
-                                
-                                # Try with --network host first
-                                if docker run --rm \\
-                                    -e SONAR_HOST_URL=${sonarQubeUrl} \\
-                                    -e SONAR_LOGIN=\$SONAR_TOKEN \\
-                                    -v \$(pwd):/usr/src \\
-                                    --network host \\
-                                    sonarsource/sonar-scanner-cli:latest \\
-                                    -Dsonar.projectKey=${projectKey} \\
-                                    -Dsonar.projectName="${projectName}" \\
-                                    -Dsonar.projectVersion=\${BUILD_NUMBER} \\
-                                    -Dsonar.sources=src/main/java \\
-                                    -Dsonar.tests=src/test/java \\
-                                    -Dsonar.java.binaries=target/classes \\
-                                    -Dsonar.java.test.binaries=target/test-classes \\
-                                    -Dsonar.junit.reportPaths=target/surefire-reports \\
-                                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \\
-                                    -Dsonar.java.source=17 \\
-                                    -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**' \\
-                                    -Dsonar.verbose=true; then
-                                    echo "✅ SonarQube analysis completed successfully!"
-                                else
-                                    echo "❌ SonarQube analysis failed with --network host"
-                                    echo "🔄 Trying without --network host..."
-                                    docker run --rm \\
-                                        -e SONAR_HOST_URL=${sonarQubeUrl} \\
-                                        -v \$(pwd):/usr/src \\
-                                        sonarsource/sonar-scanner-cli:latest \\
-                                        -Dsonar.projectKey=${projectKey} \\
-                                        -Dsonar.projectName="${projectName}" \\
-                                        -Dsonar.projectVersion=\${BUILD_NUMBER} \\
-                                        -Dsonar.sources=src/main/java \\
-                                        -Dsonar.tests=src/test/java \\
-                                        -Dsonar.java.binaries=target/classes \\
-                                        -Dsonar.java.test.binaries=target/test-classes \\
-                                        -Dsonar.junit.reportPaths=target/surefire-reports \\
-                                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \\
-                                        -Dsonar.java.source=17 \\
-                                        -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**' \\
-                                        -Dsonar.verbose=true
-                                fi
-                            """
-                        } else {
-                            bat """
-                                echo "Starting SonarQube analysis with Docker..."
-                                echo "SonarQube URL: ${sonarQubeUrl}"
-                                echo "Project Key: ${projectKey}"
-                                echo "Build Number: %BUILD_NUMBER%"
-                                echo "Working Directory: %cd%"
-                                
-                                echo "🔍 Testing SonarQube connectivity..."
-                                curl -f ${sonarQubeUrl}/api/system/status
-                                if %errorlevel% neq 0 (
-                                    echo "❌ Cannot reach SonarQube server"
-                                    exit /b 1
-                                )
-                                echo "✅ SonarQube server is accessible"
-                                
-                                echo "🔍 Testing Docker..."
-                                docker --version
-                                
-                                echo "🔍 Pulling SonarQube scanner image..."
-                                docker pull sonarsource/sonar-scanner-cli:latest
-                                
-                                if exist "target\\\\classes" (
-                                    echo "✅ target\\\\classes directory found"
-                                ) else (
-                                    echo "❌ target\\\\classes directory not found"
-                                )
-                                
-                                if exist "src\\main\\java" (
-                                    echo "✅ src\\main\\java directory found"
-                                ) else (
-                                    echo "❌ src\\main\\java directory not found"
-                                )
-                                
-                                echo "🚀 Starting SonarQube analysis..."
-                                docker run --rm ^
-                                    -e SONAR_HOST_URL=${sonarQubeUrl} ^
-                                    -e SONAR_LOGIN=%SONAR_TOKEN% ^
-                                    -v %cd%:/usr/src ^
-                                    --network host ^
-                                    sonarsource/sonar-scanner-cli:latest ^
-                                    -Dsonar.projectKey=${projectKey} ^
-                                    -Dsonar.projectName="${projectName}" ^
-                                    -Dsonar.projectVersion=%BUILD_NUMBER% ^
-                                    -Dsonar.sources=src/main/java ^
-                                    -Dsonar.tests=src/test/java ^
-                                    -Dsonar.java.binaries=target/classes ^
-                                    -Dsonar.java.test.binaries=target/test-classes ^
-                                    -Dsonar.junit.reportPaths=target/surefire-reports ^
-                                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml ^
-                                    -Dsonar.java.source=17 ^
-                                    -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/** ^
-                                    -Dsonar.verbose=true
-                            """
-                        }
-                        }
-                    } catch (Exception e) {
-                        echo "❌ SonarQube credentials error: ${e.getMessage()}"
-                        echo "🔍 Error details: ${e.toString()}"
-                        echo "⚠️ SonarQube token not found or invalid. Skipping analysis."
-                        echo "🔧 To enable SonarQube analysis:"
-                        echo "   1. Go to SonarQube: http://192.168.182.146:9000"
-                        echo "   2. Login (admin/admin) and create a token"
-                        echo "   3. Add token to Jenkins credentials with ID 'sonarqube-token'"
-                        echo "   4. Ensure credential type is 'Secret text'"
-                        echo "   5. Ensure credential scope is 'Global'"
-                        currentBuild.result = 'SUCCESS' // Don't fail the build for missing SonarQube token
+                    if (isUnix()) {
+                        sh """
+                            echo "Starting SonarQube analysis with Docker..."
+                            echo "SonarQube URL: ${sonarQubeUrl}"
+                            echo "Project Key: ${projectKey}"
+                            echo "Build Number: \${BUILD_NUMBER}"
+                            
+                            # Test SonarQube connectivity
+                            echo "🔍 Testing SonarQube connectivity..."
+                            curl -f ${sonarQubeUrl}/api/system/status
+                            
+                            # Run SonarQube analysis
+                            echo "🚀 Starting SonarQube analysis..."
+                            docker run --rm \\
+                                -e SONAR_HOST_URL=${sonarQubeUrl} \\
+                                -v \$(pwd):/usr/src \\
+                                --network host \\
+                                sonarsource/sonar-scanner-cli:latest \\
+                                -Dsonar.projectKey=${projectKey} \\
+                                -Dsonar.projectName="${projectName}" \\
+                                -Dsonar.projectVersion=\${BUILD_NUMBER} \\
+                                -Dsonar.sources=src/main/java \\
+                                -Dsonar.tests=src/test/java \\
+                                -Dsonar.java.binaries=target/classes \\
+                                -Dsonar.java.test.binaries=target/test-classes \\
+                                -Dsonar.junit.reportPaths=target/surefire-reports \\
+                                -Dsonar.java.source=17 \\
+                                -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**'
+                        """
+                    } else {
+                        bat """
+                            echo "Starting SonarQube analysis with Docker..."
+                            echo "SonarQube URL: ${sonarQubeUrl}"
+                            echo "Project Key: ${projectKey}"
+                            
+                            echo "🔍 Testing SonarQube connectivity..."
+                            curl -f ${sonarQubeUrl}/api/system/status
+                            
+                            echo "🚀 Starting SonarQube analysis..."
+                            docker run --rm ^
+                                -e SONAR_HOST_URL=${sonarQubeUrl} ^
+                                -v %cd%:/usr/src ^
+                                --network host ^
+                                sonarsource/sonar-scanner-cli:latest ^
+                                -Dsonar.projectKey=${projectKey} ^
+                                -Dsonar.projectName="${projectName}" ^
+                                -Dsonar.projectVersion=%BUILD_NUMBER% ^
+                                -Dsonar.sources=src/main/java ^
+                                -Dsonar.tests=src/test/java ^
+                                -Dsonar.java.binaries=target/classes ^
+                                -Dsonar.java.test.binaries=target/test-classes ^
+                                -Dsonar.junit.reportPaths=target/surefire-reports ^
+                                -Dsonar.java.source=17 ^
+                                -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
+                        """
                     }
                 }
             }
