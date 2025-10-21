@@ -263,21 +263,23 @@ pipeline {
                                 export KUBECONFIG=${KUBECONFIG}
                                 
                                 # Check if kubectl is available
-                                if ! command -v kubectl &> /dev/null; then
+                                if ! command -v kubectl > /dev/null 2>&1; then
                                     echo "❌ kubectl is not installed"
                                     exit 1
                                 fi
                                 
+                                echo "✅ kubectl found at: $(command -v kubectl)"
+                                
                                 # Check cluster connectivity
                                 echo "🔗 Testing connection to remote Kubernetes cluster..."
-                                if ! kubectl cluster-info; then
+                                kubectl cluster-info || {
                                     echo "❌ Cannot connect to Kubernetes cluster"
                                     echo "💡 Please check:"
                                     echo "   - Kubeconfig file is correctly configured"
                                     echo "   - Network connectivity to K8s cluster"
                                     echo "   - K8s API server is accessible"
                                     exit 1
-                                fi
+                                }
                                 
                                 echo "✅ Connected to Kubernetes cluster"
                                 kubectl get nodes
