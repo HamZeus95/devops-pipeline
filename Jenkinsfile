@@ -20,86 +20,86 @@ pipeline {
             }
         }
         
-        stage('Setup SonarQube') {
-            steps {
-                echo 'Setting up SonarQube Docker container...'
-                script {
-                    if (isUnix()) {
-                        sh '''
-                            echo "Checking if SonarQube container exists..."
-                            if docker ps -a --format "table {{.Names}}" | grep -q "sonarqube"; then
-                                echo "SonarQube container exists, checking status..."
-                                if docker ps --format "table {{.Names}}" | grep -q "sonarqube"; then
-                                    echo "✅ SonarQube is already running"
-                                else
-                                    echo "Starting existing SonarQube container..."
-                                    docker start sonarqube
-                                    echo "Waiting for SonarQube to be ready..."
-                                    sleep 60
-                                fi
-                            else
-                                echo "Creating new SonarQube container..."
-                                docker run -d --name sonarqube \\
-                                    -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \\
-                                    -p 9000:9000 \\
-                                    sonarqube:latest
-                                echo "Waiting for SonarQube to initialize (this may take a few minutes)..."
-                                sleep 150
-                            fi
-                            
-                            echo "Checking SonarQube health..."
-                            timeout 300 bash -c 'until curl -f http://localhost:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
-                            
-                            echo "🔧 Disabling SonarQube authentication for Jenkins analysis..."
-                            curl -u admin:Hamza310795§ -X POST "http://localhost:9000/api/settings/set?key=sonar.forceAuthentication&value=false" || echo "Failed to disable authentication, will try with credentials"
-                            curl -u admin:Hamza310795§ -X POST "http://localhost:9000/api/permissions/add_group?groupName=Anyone&permission=scan" || echo "Failed to add Anyone scan permission"
-                            
-                            echo "✅ SonarQube is ready!"
-                        '''
-                    } else {
-                        bat '''
-                            echo "Checking if SonarQube container exists..."
-                            docker ps -a --format "table {{.Names}}" | findstr "sonarqube" >nul
-                            if %errorlevel% equ 0 (
-                                echo "SonarQube container exists, checking status..."
-                                docker ps --format "table {{.Names}}" | findstr "sonarqube" >nul
-                                if %errorlevel% equ 0 (
-                                    echo "✅ SonarQube is already running"
-                                ) else (
-                                    echo "Starting existing SonarQube container..."
-                                    docker start sonarqube
-                                    echo "Waiting for SonarQube to be ready..."
-                                    timeout /t 60 /nobreak >nul
-                                )
-                            ) else (
-                                echo "Creating new SonarQube container..."
-                                docker run -d --name sonarqube ^
-                                    -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true ^
-                                    -p 9000:9000 ^
-                                    sonarqube:latest
-                                echo "Waiting for SonarQube to initialize (this may take a few minutes)..."
-                                timeout /t 120 /nobreak >nul
-                            )
-                            
-                            echo "✅ SonarQube setup completed!"
-                            echo "🌐 SonarQube will be available at: http://localhost:9000 (VM internal)"
-                            echo "🌐 External access: http://192.168.1.239:9000 (configure VM networking)"
-                        '''
-                    }
-                }
-            }
-            post {
-                success {
-                    echo "🐳 SonarQube Docker container is running"
-                    echo "🌐 Access SonarQube at: http://192.168.1.239:9000"
-                    echo "📝 Default credentials: admin/admin (you'll be prompted to change)"
-                }
-                failure {
-                    echo "❌ Failed to setup SonarQube container"
-                    echo "🔍 Check Docker daemon and network connectivity"
-                }
-            }
-        }
+        // stage('Setup SonarQube') {
+        //     steps {
+        //         echo 'Setting up SonarQube Docker container...'
+        //         script {
+        //             if (isUnix()) {
+        //                 sh '''
+        //                     echo "Checking if SonarQube container exists..."
+        //                     if docker ps -a --format "table {{.Names}}" | grep -q "sonarqube"; then
+        //                         echo "SonarQube container exists, checking status..."
+        //                         if docker ps --format "table {{.Names}}" | grep -q "sonarqube"; then
+        //                             echo "✅ SonarQube is already running"
+        //                         else
+        //                             echo "Starting existing SonarQube container..."
+        //                             docker start sonarqube
+        //                             echo "Waiting for SonarQube to be ready..."
+        //                             sleep 60
+        //                         fi
+        //                     else
+        //                         echo "Creating new SonarQube container..."
+        //                         docker run -d --name sonarqube \\
+        //                             -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \\
+        //                             -p 9000:9000 \\
+        //                             sonarqube:latest
+        //                         echo "Waiting for SonarQube to initialize (this may take a few minutes)..."
+        //                         sleep 150
+        //                     fi
+        //                     
+        //                     echo "Checking SonarQube health..."
+        //                     timeout 300 bash -c 'until curl -f http://localhost:9000/api/system/status; do echo "Waiting for SonarQube..."; sleep 10; done'
+        //                     
+        //                     echo "🔧 Disabling SonarQube authentication for Jenkins analysis..."
+        //                     curl -u admin:Hamza310795§ -X POST "http://localhost:9000/api/settings/set?key=sonar.forceAuthentication&value=false" || echo "Failed to disable authentication, will try with credentials"
+        //                     curl -u admin:Hamza310795§ -X POST "http://localhost:9000/api/permissions/add_group?groupName=Anyone&permission=scan" || echo "Failed to add Anyone scan permission"
+        //                     
+        //                     echo "✅ SonarQube is ready!"
+        //                 '''
+        //             } else {
+        //                 bat '''
+        //                     echo "Checking if SonarQube container exists..."
+        //                     docker ps -a --format "table {{.Names}}" | findstr "sonarqube" >nul
+        //                     if %errorlevel% equ 0 (
+        //                         echo "SonarQube container exists, checking status..."
+        //                         docker ps --format "table {{.Names}}" | findstr "sonarqube" >nul
+        //                         if %errorlevel% equ 0 (
+        //                             echo "✅ SonarQube is already running"
+        //                         ) else (
+        //                             echo "Starting existing SonarQube container..."
+        //                             docker start sonarqube
+        //                             echo "Waiting for SonarQube to be ready..."
+        //                             timeout /t 60 /nobreak >nul
+        //                         )
+        //                     ) else (
+        //                         echo "Creating new SonarQube container..."
+        //                         docker run -d --name sonarqube ^
+        //                             -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true ^
+        //                             -p 9000:9000 ^
+        //                             sonarqube:latest
+        //                         echo "Waiting for SonarQube to initialize (this may take a few minutes)..."
+        //                         timeout /t 120 /nobreak >nul
+        //                     )
+        //                     
+        //                     echo "✅ SonarQube setup completed!"
+        //                     echo "🌐 SonarQube will be available at: http://localhost:9000 (VM internal)"
+        //                     echo "🌐 External access: http://192.168.1.239:9000 (configure VM networking)"
+        //                 '''
+        //             }
+        //         }
+        //     }
+        //     post {
+        //         success {
+        //             echo "🐳 SonarQube Docker container is running"
+        //             echo "🌐 Access SonarQube at: http://192.168.1.239:9000"
+        //             echo "📝 Default credentials: admin/admin (you'll be prompted to change)"
+        //         }
+        //         failure {
+        //             echo "❌ Failed to setup SonarQube container"
+        //             echo "🔍 Check Docker daemon and network connectivity"
+        //         }
+        //     }
+        // }
         
         stage('Build') {
             steps {
@@ -168,137 +168,26 @@ pipeline {
             }
         }
         
-        stage('SonarQube Analysis') {
-            steps {
-                echo 'Running SonarQube code quality analysis...'
-                script {
-                    def sonarQubeUrl = env.SONAR_HOST_URL ?: 'http://localhost:9000'
-                    def sonarQubeUrlExternal = env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.1.239:9000'
-                    def projectKey = 'student-management'
-                    def projectName = 'Student Management Application'
-                    
-                    echo "🔍 SonarQube URL: ${sonarQubeUrl}"
-                    echo "📊 Project: ${projectName} (${projectKey})"
-                    
-                    // Try with credentials first, then without
-                    def analysisSuccess = false
-                    
-                    try {
-                        // Try with SonarQube admin credentials using sonar.login parameter
-                        echo "🔍 Trying SonarQube analysis with admin credentials..."
-                        if (isUnix()) {
-                            sh """
-                                docker run --rm \\
-                                    -e SONAR_HOST_URL=${sonarQubeUrl} \\
-                                    -v \$(pwd):/usr/src \\
-                                    --network host \\
-                                    sonarsource/sonar-scanner-cli:latest \\
-                                    -Dsonar.projectKey=${projectKey} \\
-                                    -Dsonar.projectName="${projectName}" \\
-                                    -Dsonar.projectVersion=\${BUILD_NUMBER} \\
-                                    -Dsonar.sources=src/main/java \\
-                                    -Dsonar.tests=src/test/java \\
-                                    -Dsonar.java.binaries=target/classes \\
-                                    -Dsonar.java.test.binaries=target/test-classes \\
-                                    -Dsonar.junit.reportPaths=target/surefire-reports \\
-                                    -Dsonar.java.source=17 \\
-                                    -Dsonar.login=admin \\
-                                    -Dsonar.password=Hamza310795§ \\
-                                    -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**'
-                            """
-                        } else {
-                            bat """
-                                docker run --rm ^
-                                    -e SONAR_HOST_URL=${sonarQubeUrl} ^
-                                    -v %cd%:/usr/src ^
-                                    --network host ^
-                                    sonarsource/sonar-scanner-cli:latest ^
-                                    -Dsonar.projectKey=${projectKey} ^
-                                    -Dsonar.projectName="${projectName}" ^
-                                    -Dsonar.projectVersion=%BUILD_NUMBER% ^
-                                    -Dsonar.sources=src/main/java ^
-                                    -Dsonar.tests=src/test/java ^
-                                    -Dsonar.java.binaries=target/classes ^
-                                    -Dsonar.java.test.binaries=target/test-classes ^
-                                    -Dsonar.junit.reportPaths=target/surefire-reports ^
-                                    -Dsonar.java.source=17 ^
-                                    -Dsonar.login=admin ^
-                                    -Dsonar.password=Hamza310795§ ^
-                                    -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
-                            """
-                        }
-                        analysisSuccess = true
-                        echo "✅ SonarQube analysis with admin credentials successful!"
-                    } catch (Exception e) {
-                        echo "⚠️ Authentication failed: ${e.getMessage()}"
-                        echo "🔄 Trying without authentication (public mode)..."
-                        
-                        try {
-                            echo "🔄 Trying SonarQube analysis without credentials (fallback)..."
-                            if (isUnix()) {
-                                sh """
-                                    docker run --rm \\
-                                        -e SONAR_HOST_URL=${sonarQubeUrl} \\
-                                        -v \$(pwd):/usr/src \\
-                                        --network host \\
-                                        sonarsource/sonar-scanner-cli:latest \\
-                                        -Dsonar.projectKey=${projectKey} \\
-                                        -Dsonar.projectName="${projectName}" \\
-                                        -Dsonar.projectVersion=\${BUILD_NUMBER} \\
-                                        -Dsonar.sources=src/main/java \\
-                                        -Dsonar.tests=src/test/java \\
-                                        -Dsonar.java.binaries=target/classes \\
-                                        -Dsonar.java.test.binaries=target/test-classes \\
-                                        -Dsonar.junit.reportPaths=target/surefire-reports \\
-                                        -Dsonar.java.source=17 \\
-                                        -Dsonar.exclusions='**/*Test*.java,**/test/**,**/target/**'
-                                """
-                            } else {
-                                bat """
-                                    docker run --rm ^
-                                        -e SONAR_HOST_URL=${sonarQubeUrl} ^
-                                        -v %cd%:/usr/src ^
-                                        --network host ^
-                                        sonarsource/sonar-scanner-cli:latest ^
-                                        -Dsonar.projectKey=${projectKey} ^
-                                        -Dsonar.projectName="${projectName}" ^
-                                        -Dsonar.projectVersion=%BUILD_NUMBER% ^
-                                        -Dsonar.sources=src/main/java ^
-                                        -Dsonar.tests=src/test/java ^
-                                        -Dsonar.java.binaries=target/classes ^
-                                        -Dsonar.java.test.binaries=target/test-classes ^
-                                        -Dsonar.junit.reportPaths=target/surefire-reports ^
-                                        -Dsonar.java.source=17 ^
-                                        -Dsonar.exclusions=**/*Test*.java,**/test/**,**/target/**
-                                """
-                            }
-                            analysisSuccess = true
-                            echo "✅ SonarQube analysis without authentication successful!"
-                        } catch (Exception e2) {
-                            echo "❌ All authentication methods failed!"
-                            echo "🔧 SonarQube analysis completed with warnings"
-                            echo "📋 Pipeline will continue - check SonarQube manually at: ${sonarQubeUrlExternal}"
-                            currentBuild.result = 'SUCCESS'  // Don't fail the entire build
-                        }
-                    }
-                }
-            }
-            post {
-                always {
-                    echo "📊 SonarQube analysis completed"
-                    echo "🔍 View detailed report at: ${env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.1.239:9000'}/dashboard?id=student-management"
-                    echo "💡 If external access fails, configure VM network settings (Bridged mode or Port Forwarding)"
-                }
-                success {
-                    echo "✅ SonarQube analysis completed successfully!"
-                    echo "📈 Code quality metrics have been updated"
-                }
-                failure {
-                    echo "❌ SonarQube analysis failed!"
-                    echo "🔍 Check SonarQube server connectivity and credentials"
-                }
-            }
-        }
+        // stage('SonarQube Analysis') {
+        //     // SonarQube analysis stage is temporarily disabled
+        //     // steps {
+        //     //     echo 'Running SonarQube code quality analysis...'
+        //     //     script {
+        //     //         def sonarQubeUrl = env.SONAR_HOST_URL ?: 'http://localhost:9000'
+        //     //         def sonarQubeUrlExternal = env.SONAR_HOST_URL_EXTERNAL ?: 'http://192.168.1.239:9000'
+        //     //         def projectKey = 'student-management'
+        //     //         def projectName = 'Student Management Application'
+        //     //         echo "🔍 SonarQube URL: ${sonarQubeUrl}"
+        //     //         echo "📊 Project: ${projectName} (${projectKey})"
+        //     //         // Analysis steps removed while disabled
+        //     //     }
+        //     // }
+        //     // post {
+        //     //     always {
+        //     //         echo "📊 SonarQube analysis completed (disabled)"
+        //     //     }
+        //     // }
+        // }
         
         stage('Package') {
             steps {
