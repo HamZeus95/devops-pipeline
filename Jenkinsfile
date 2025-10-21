@@ -359,6 +359,180 @@ pipeline {
                 }
             }
         }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo 'Deploying to remote Kubernetes cluster...'
+                script {
+                    // Use kubeconfig credentials stored in Jenkins
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        if (isUnix()) {
+                            sh '''
+                                echo "🚀 Starting Kubernetes deployment..."
+                                
+                                # Set kubeconfig
+                                export KUBECONFIG=${KUBECONFIG}
+                                
+                                # Check if kubectl is available
+                                if ! command -v kubectl &> /dev/null; then
+                                    echo "❌ kubectl is not installed"
+                                    exit 1
+                                fi
+                                
+                                # Check cluster connectivity
+                                echo "🔗 Testing connection to remote Kubernetes cluster..."
+                                if ! kubectl cluster-info; then
+                                    echo "❌ Cannot connect to Kubernetes cluster"
+                                    echo "💡 Please check:"
+                                    echo "   - Kubeconfig file is correctly configured"
+                                    echo "   - Network connectivity to K8s cluster"
+                                    echo "   - K8s API server is accessible"
+                                    exit 1
+                                fi
+                                
+                                echo "✅ Connected to Kubernetes cluster"
+                                kubectl get nodes
+                                
+                                # Apply Kubernetes manifests
+                                cd k8s
+                                
+                                echo "📦 Creating namespace..."
+                                kubectl apply -f 00-namespace.yaml
+                                
+                                echo "🗄️ Deploying MySQL database..."
+                                kubectl apply -f 01-mysql-configmap.yaml
+                                kubectl apply -f 02-mysql-secret.yaml
+                                kubectl apply -f 03-mysql-pv-pvc.yaml
+                                kubectl apply -f 04-mysql-deployment.yaml
+                                kubectl apply -f 05-mysql-service.yaml
+                                
+                                echo "⏳ Waiting for MySQL to be ready..."
+                                kubectl wait --for=condition=ready pod -l app=mysql -n student-management --timeout=300s || echo "MySQL readiness check timed out, continuing..."
+                                
+                                echo "🚀 Deploying application..."
+                                kubectl apply -f 06-app-configmap.yaml
+                                kubectl apply -f 07-app-secret.yaml
+                                kubectl apply -f 08-app-deployment.yaml
+                                kubectl apply -f 09-app-service.yaml
+                                
+                                # Update deployment to use the new image with build number tag
+                                echo "🔄 Updating deployment with new image: benalihamza/devops:${BUILD_NUMBER}"
+                                kubectl set image deployment/student-management-app student-management=benalihamza/devops:${BUILD_NUMBER} -n student-management
+                                
+                                echo "⏳ Waiting for rollout to complete..."
+                                kubectl rollout status deployment/student-management-app -n student-management --timeout=300s
+                                
+                                echo "✅ Deployment completed successfully!"
+                                
+                                # Display deployment info
+                                echo ""
+                                echo "📊 Deployment Status:"
+                                kubectl get pods -n student-management
+                                kubectl get svc -n student-management
+                                
+                                # Get access information
+                                NODE_PORT=$(kubectl get svc student-management-service -n student-management -o jsonpath='{.spec.ports[0].nodePort}')
+                                K8S_NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+                                echo ""
+                                echo "🌐 Application URL: http://${K8S_NODE_IP}:${NODE_PORT}/student"
+                                echo "📚 Swagger UI: http://${K8S_NODE_IP}:${NODE_PORT}/student/swagger-ui.html"
+                            '''
+                        } else {
+                            bat '''
+                                echo "🚀 Starting Kubernetes deployment..."
+                                
+                                REM Set kubeconfig
+                                set KUBECONFIG=%KUBECONFIG%
+                                
+                                REM Check if kubectl is available
+                                kubectl version --client >nul 2>&1
+                                if errorlevel 1 (
+                                    echo "❌ kubectl is not installed"
+                                    exit /b 1
+                                )
+                                
+                                REM Check cluster connectivity
+                                echo "🔗 Testing connection to remote Kubernetes cluster..."
+                                kubectl cluster-info
+                                if errorlevel 1 (
+                                    echo "❌ Cannot connect to Kubernetes cluster"
+                                    echo "💡 Please check:"
+                                    echo "   - Kubeconfig file is correctly configured"
+                                    echo "   - Network connectivity to K8s cluster"
+                                    echo "   - K8s API server is accessible"
+                                    exit /b 1
+                                )
+                                
+                                echo "✅ Connected to Kubernetes cluster"
+                                kubectl get nodes
+                                
+                                REM Apply Kubernetes manifests
+                                cd k8s
+                                
+                                echo "📦 Creating namespace..."
+                                kubectl apply -f 00-namespace.yaml
+                                
+                                echo "🗄️ Deploying MySQL database..."
+                                kubectl apply -f 01-mysql-configmap.yaml
+                                kubectl apply -f 02-mysql-secret.yaml
+                                kubectl apply -f 03-mysql-pv-pvc.yaml
+                                kubectl apply -f 04-mysql-deployment.yaml
+                                kubectl apply -f 05-mysql-service.yaml
+                                
+                                echo "⏳ Waiting for MySQL to be ready..."
+                                kubectl wait --for=condition=ready pod -l app=mysql -n student-management --timeout=300s
+                                
+                                echo "🚀 Deploying application..."
+                                kubectl apply -f 06-app-configmap.yaml
+                                kubectl apply -f 07-app-secret.yaml
+                                kubectl apply -f 08-app-deployment.yaml
+                                kubectl apply -f 09-app-service.yaml
+                                
+                                REM Update deployment to use the new image with build number tag
+                                echo "🔄 Updating deployment with new image: benalihamza/devops:%BUILD_NUMBER%"
+                                kubectl set image deployment/student-management-app student-management=benalihamza/devops:%BUILD_NUMBER% -n student-management
+                                
+                                echo "⏳ Waiting for rollout to complete..."
+                                kubectl rollout status deployment/student-management-app -n student-management --timeout=300s
+                                
+                                echo "✅ Deployment completed successfully!"
+                                
+                                REM Display deployment info
+                                echo.
+                                echo "📊 Deployment Status:"
+                                kubectl get pods -n student-management
+                                kubectl get svc -n student-management
+                                
+                                REM Get access information
+                                for /f "tokens=*" %%i in ('kubectl get svc student-management-service -n student-management -o jsonpath^="{.spec.ports[0].nodePort}"') do set NODE_PORT=%%i
+                                for /f "tokens=*" %%i in ('kubectl get nodes -o jsonpath^="{.items[0].status.addresses[?(@.type==\"InternalIP\")].address}"') do set K8S_NODE_IP=%%i
+                                echo.
+                                echo "🌐 Application URL: http://%K8S_NODE_IP%:%NODE_PORT%/student"
+                                echo "📚 Swagger UI: http://%K8S_NODE_IP%:%NODE_PORT%/student/swagger-ui.html"
+                            '''
+                        }
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "✅ Kubernetes deployment successful!"
+                    echo "🎯 Application is running in remote Kubernetes cluster"
+                    echo "📊 To check status, configure kubectl with the cluster's kubeconfig"
+                }
+                failure {
+                    echo "❌ Kubernetes deployment failed!"
+                    echo "🔍 Possible issues:"
+                    echo "   - Jenkins cannot reach the K8s cluster"
+                    echo "   - Kubeconfig credentials not configured"
+                    echo "   - Network connectivity issues"
+                    echo "💡 Setup Instructions:"
+                    echo "   1. Copy kubeconfig from K8s VM: ~/.kube/config"
+                    echo "   2. Add as 'Secret file' credential in Jenkins with ID 'kubeconfig'"
+                    echo "   3. Ensure Jenkins VM can reach K8s API server"
+                }
+            }
+        }
 
 
 
@@ -421,9 +595,19 @@ pipeline {
             echo "🎉 Pipeline completed successfully!"
             echo "📍 JAR file location: workspace/target/*.jar"
             echo "📋 Build artifacts are available in Jenkins"
+            echo "🐳 Docker image: benalihamza/devops:${BUILD_NUMBER}"
+            echo "☸️  Kubernetes: Application deployed to cluster"
             echo "🐳 SonarQube is running at: http://192.168.1.239:9000"
             echo "📊 View your code quality report at: http://192.168.1.239:9000/dashboard?id=student-management"
             echo "💡 If external access fails, configure VM networking (Bridged mode recommended)"
+            
+            script {
+                // Get NodePort for K8s access
+                if (isUnix()) {
+                    def nodePort = sh(script: "kubectl get svc student-management-service -n student-management -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo '30089'", returnStdout: true).trim()
+                    echo "🌐 Kubernetes Application URL: http://localhost:${nodePort}/student"
+                }
+            }
             
             // Slack notification for success
             slackSend(
@@ -458,6 +642,7 @@ pipeline {
                     <li>✅ SonarQube analysis completed</li>
                     <li>✅ Application packaged</li>
                     <li>✅ Docker image built and pushed</li>
+                    <li>✅ Deployed to Kubernetes cluster</li>
                 </ul>
                 
                 <h3>Quality Reports:</h3>
